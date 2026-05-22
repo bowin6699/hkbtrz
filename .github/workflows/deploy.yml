@@ -29,6 +29,7 @@ jobs:
           script: |
             cp /data/config.json /data/file-finder/config.json
             cp /data/users.json /data/file-finder/users.json
+            sed -i 's|ExecStart=.*|ExecStart=/usr/bin/python3.11 /data/file-finder/server.py|' /etc/systemd/system/filefinder.service
             systemctl daemon-reload
             systemctl restart filefinder
             echo "Deploy complete"
