@@ -705,11 +705,11 @@ button:active { transform: scale(0.97); }
   <div id="searchView" class="container">
     <div class="search-box">
       <div class="dir-presets">
-        <button class="dir-preset active" id="presetE2" onclick="setDir('/home/user/汉口北工作/证照/E2',this)">E2</button>
-        <button class="dir-preset" id="presetE3" onclick="setDir('/home/user/汉口北工作/证照/E3',this)">E3</button>
-        <button class="dir-preset" id="presetE4" onclick="setDir('/home/user/汉口北工作/证照/E4',this)">E4</button>
-        <button class="dir-preset" id="presetH" onclick="setDir('/home/user/汉口北工作/证照/H区',this)">H区</button>
-        <button class="dir-preset" id="presetJ3" onclick="setDir('/home/user/汉口北工作/证照/J3区不动产（1645）',this)">J3</button>
+        <button class="dir-preset active" id="presetE2" onclick="setDir('/data/汉口北工作/证照/E2',this)">E2</button>
+        <button class="dir-preset" id="presetE3" onclick="setDir('/data/汉口北工作/证照/E3',this)">E3</button>
+        <button class="dir-preset" id="presetE4" onclick="setDir('/data/汉口北工作/证照/E4',this)">E4</button>
+        <button class="dir-preset" id="presetH" onclick="setDir('/data/汉口北工作/证照/H区',this)">H区</button>
+        <button class="dir-preset" id="presetJ3" onclick="setDir('/data/汉口北工作/证照/J3区不动产（1645）',this)">J3</button>
         <button class="dir-preset" id="presetYLd" onclick="setDir('/mnt/office/YLd',this)">YLd</button>
         <button class="dir-preset" id="presetYLe" onclick="setDir('/mnt/office/YLe',this)">YLe</button>
         <button class="dir-preset" id="presetYLf" onclick="setDir('/mnt/office/YLf',this)">YLf</button>
@@ -915,7 +915,7 @@ var typeSelect = document.getElementById('typeSelect');
 var resultsEl = document.getElementById('results');
 var statusEl = document.getElementById('status');
 var resultCountEl = document.getElementById('resultCount');
-var currentDir = '/home/user/汉口北工作/证照/E2';
+var currentDir = '/data/汉口北工作/证照/E2';
 
 function setDir(path, btn) {
   currentDir = path;
