@@ -12,3 +12,4 @@ __pycache__/
 
 # frp
 frp/
+deploy_key*

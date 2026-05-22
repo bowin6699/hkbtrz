@@ -1,0 +1,34 @@
+name: Deploy to Alibaba Cloud
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: YOUR_SERVER_IP
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/data/file-finder"
+          strip_components: 0
+
+      - name: Restore config and restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: YOUR_SERVER_IP
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cp /data/config.json /data/file-finder/config.json
+            cp /data/users.json /data/file-finder/users.json
+            systemctl daemon-reload
+            systemctl restart filefinder
+            echo "Deploy complete"
