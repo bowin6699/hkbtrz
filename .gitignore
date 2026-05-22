@@ -1,0 +1,14 @@
+# 敏感配置（含密码）
+config.json
+users.json
+
+# Claude 内部文件
+.claude/
+
+# 临时文件
+__pycache__/
+*.pyc
+.DS_Store
+
+# frp
+frp/
