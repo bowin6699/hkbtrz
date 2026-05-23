@@ -90,9 +90,15 @@ def verify_password(password: str, stored: str) -> bool:
 # Init: seed admin account if not exists
 def init_admin():
     users = load_users()
+    config = load_config()
+    admin_pwd = config.get("admin_password", "")
+    if not admin_pwd:
+        print("[错误] config.json 中未设置 admin_password，请配置后重新启动")
+        print("示例: {\"admin_password\": \"你的密码\"}")
+        return
     if "bowin6699" not in users:
         users["bowin6699"] = {
-            "password": hash_password("ADMIN_PASSWORD"),
+            "password": hash_password(admin_pwd),
             "role": "admin",
             "name": "管理员",
             "department": "管理部",
@@ -543,10 +549,6 @@ async def preview(request: Request, path: str = Query(..., description="文件�
 
 
 # ══════════════════════════════════════════════════════════
-@app.get("/logo")
-async def logo():
-    logo_path = "/home/user/汉口北工作/2026金融赋能工作/2026金融赋能工作/宣讲会/LOGO/白色集团.png"
-    return FileResponse(logo_path, media_type="image/png")
 
 @app.get("/bg.jpg")
 async def bg_image():
@@ -1322,39 +1324,6 @@ button:active { transform: scale(0.97); }
   font-size: 0.78rem;
 }
 
-/* ── Tabs guide ── */
-.tab-guide {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  justify-content: center;
-}
-
-.tab-guide button {
-  padding: 10px 24px;
-  border-radius: 12px;
-  border: none;
-  font-size: 0.88rem;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all var(--transition);
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.6);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.tab-guide button:hover {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-}
-
-.tab-guide button.active {
-  background: rgba(201, 168, 76, 0.2);
-  color: var(--gold-light);
-  border-color: rgba(201, 168, 76, 0.3);
-}
-
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .auth-card { padding: 32px 24px; }
@@ -1372,7 +1341,6 @@ button:active { transform: scale(0.97); }
   .admin-panel { padding: 16px; overflow-x: auto; }
   .welcome-banner { flex-direction: column; text-align: center; padding: 20px; }
   .welcome-banner .stats { margin-left: 0; }
-  .tab-guide { flex-wrap: wrap; }
 }
 
 /* ── Loading ── */
@@ -1388,7 +1356,7 @@ button:active { transform: scale(0.97); }
 <body>
 
 <div class="bg-image">
-  <img src="/bg.jpg" alt="">
+  <img src="/rz/bg.jpg" alt="">
 </div>
 
 <!-- ═══════════ LOGIN PAGE ═══════════ -->
@@ -1440,19 +1408,12 @@ button:active { transform: scale(0.97); }
   </div>
 
   <div class="page-container">
-    <!-- Tab guide -->
-    <div style="padding: 24px 16px 0;max-width:860px;margin:0 auto">
-      <div class="tab-guide" id="tabGuide">
-        <button class="active" onclick="switchMainView('search')">🔍 文件检索</button>
-        <button onclick="switchMainView('admin')">👥 用户管理</button>
-      </div>
-    </div>
 
     <!-- Welcome banner -->
     <div style="padding: 0 16px;max-width:860px;margin:0 auto">
       <div class="welcome-banner">
         <div>
-          <div class="greeting" id="greetingText">欢迎回来，孙宇晨</div>
+          <div class="greeting" id="greetingText">欢迎回来</div>
           <div class="greeting-sub">汉口北投融资部 · 2026年5月</div>
         </div>
         <div class="stats">
@@ -1560,10 +1521,7 @@ var mockFiles = [
 ];
 
 (function() {
-  if (token) {
-    mockLogin('demo', 'admin');
-    showMainApp();
-  } else if (MOCK_MODE) {
+  if (MOCK_MODE) {
     setTimeout(function() {
       var errEl = document.getElementById('loginError');
       errEl.style.color = 'rgba(255,255,255,0.6)';
@@ -1573,7 +1531,7 @@ var mockFiles = [
 })();
 
 function mockLogin(username, role) {
-  currentUser = { username: username, role: role, name: '孙宇晨', department: '管理部' };
+  currentUser = { username: username, role: role, name: '用户', department: '' };
   token = 'mock_' + Date.now();
 }
 
@@ -1600,16 +1558,12 @@ function showMainApp() {
 function showSearchPage() {
   document.getElementById('searchView').style.display = 'block';
   document.getElementById('adminView').style.display = 'none';
-  document.querySelectorAll('#tabGuide button').forEach(function(b) { b.classList.remove('active'); });
-  document.querySelector('#tabGuide button:first-child').classList.add('active');
 }
 
 function showAdmin() {
   if (!currentUser || currentUser.role !== 'admin') { showSearchPage(); return; }
   document.getElementById('searchView').style.display = 'none';
   document.getElementById('adminView').style.display = 'block';
-  document.querySelectorAll('#tabGuide button').forEach(function(b) { b.classList.remove('active'); });
-  document.querySelector('#tabGuide button:nth-child(2)').classList.add('active');
   adminSwitchTab('pending');
 }
 
@@ -1627,11 +1581,6 @@ function adminSwitchTab(tab) {
     document.getElementById('adminTabUsers').className = 'btn-primary';
     loadUsers();
   }
-}
-
-function switchMainView(view) {
-  if (view === 'search') showSearchPage();
-  else showAdmin();
 }
 
 function doLogin() {
@@ -1736,7 +1685,7 @@ function loadStats() {
 function loadUsers() {
   var el = document.getElementById('adminUsersContent');
   if (MOCK_MODE) {
-    el.innerHTML = '<table class="admin-table"><tr><th>账号</th><th>姓名</th><th>部门</th><th>角色</th><th>状态</th><th>注册时间</th></tr><tr><td>bowin6699</td><td>孙宇晨</td><td>管理部</td><td><span class="user-badge user-badge-admin">管理员</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>bowin6699-1</td><td>侯博文</td><td>投融资部</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>lamb</td><td>杨</td><td>融资</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-18</td></tr></table>';
+    el.innerHTML = '<table class="admin-table"><tr><th>账号</th><th>姓名</th><th>部门</th><th>角色</th><th>状态</th><th>注册时间</th></tr><tr><td>bowin6699</td><td>管理员</td><td>管理部</td><td><span class="user-badge user-badge-admin">管理员</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>bowin6699-1</td><td>侯博文</td><td>投融资部</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>lamb</td><td>杨</td><td>融资</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-18</td></tr></table>';
     return;
   }
   fetch(API + '/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } })

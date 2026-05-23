@@ -1,10 +1,10 @@
 {
-    "win_password": "你的Windows密码",
-    "admin_password": "管理员密码",
+    "win_password": "你的Windows服务器密码（远程搜索 YLd/YLe/YLf 目录时使用）",
+    "admin_password": "管理员账户 bowin6699 的登录密码",
     "session_expire_hours": 12,
     "rate_limit_per_minute": 30,
     "allowed_download_paths": [
-        "/data/搜索目录1",
-        "/mnt/搜索目录2"
+        "/data/汉口北工作/证照",
+        "/mnt/office"
     ]
 }
