@@ -1,35 +1,41 @@
 name: Deploy to Alibaba Cloud
-
 on:
   push:
     branches: [main]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: YOUR_SERVER_IP
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "/data/file-finder"
-          strip_components: 0
-
-      - name: Restore config and restart service
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: YOUR_SERVER_IP
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+      - name: Create deployment archive
+        run: |
+          tar czf /tmp/deploy.tar.gz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.github' \
+            .
+      - name: Upload archive to server
+        timeout-minutes: 3
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
+            scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            /tmp/deploy.tar.gz \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/deploy.tar.gz
+      - name: Deploy and restart service
+        timeout-minutes: 3
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'REMOTE_SCRIPT'
+            cd /data/file-finder
+            tar xzf /tmp/deploy.tar.gz
             cp /data/config.json /data/file-finder/config.json
             cp /data/users.json /data/file-finder/users.json
             sed -i 's|ExecStart=.*|ExecStart=/usr/bin/python3.11 /data/file-finder/server.py|' /etc/systemd/system/filefinder.service
             systemctl daemon-reload
             systemctl restart filefinder
-            echo "Deploy complete"
+            echo "Deploy complete: $(date)"
+          REMOTE_SCRIPT
