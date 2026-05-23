@@ -94,7 +94,7 @@ def init_admin():
         users["bowin6699"] = {
             "password": hash_password("ADMIN_PASSWORD"),
             "role": "admin",
-            "name": "孙宇晨",
+            "name": "管理员",
             "department": "管理部",
             "approved": True,
             "created_at": datetime.now().isoformat(),
@@ -552,7 +552,6 @@ async def logo():
 async def bg_image():
     bg_path = Path(__file__).parent / "W020210618335720932703.jpg"
     return FileResponse(bg_path, media_type="image/jpeg")
-
 
 
 #  Frontend SPA
@@ -1290,7 +1289,30 @@ button:active { transform: scale(0.97); }
 
 .admin-reject:hover { filter: brightness(1.1); }
 
+.btn-secondary {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all var(--transition);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.25); }
+
 .admin-empty { text-align: center; color: var(--text-muted); padding: 40px; }
+
+.user-badge { display:inline-block;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:600; }
+.user-badge-admin { background:#c9a84c20;color:#c9a84c; }
+.user-badge-user { background:#3b82f620;color:#3b82f6; }
+.edit-user-input { padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;width:120px;font-family:inherit; }
+.edit-user-btn { background:var(--navy);color:#fff;border:none;padding:4px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:600;font-family:inherit; }
+.edit-user-btn:hover { filter:brightness(1.2); }
+.edit-user-cancel { background:#f3f4f6;color:#374151;border:none;padding:4px 14px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:500;font-family:inherit;margin-left:4px; }
+.edit-user-cancel:hover { background:#e5e7eb; }
 
 /* ── Footer ── */
 .footer {
@@ -1411,7 +1433,7 @@ button:active { transform: scale(0.97); }
     <div class="user-bar">
       <span class="user-name" id="userDisplay"></span>
       <span class="admin-badge" id="adminBadge" style="display:none">管理员</span>
-      <button onclick="showAdmin()" id="adminBtn" style="display:none">审批管理</button>
+      <button onclick="showAdmin()" id="adminBtn" style="display:none">用户管理</button>
       <button onclick="showSearchPage()">检索首页</button>
       <button onclick="doLogout()">退出</button>
     </div>
@@ -1422,7 +1444,7 @@ button:active { transform: scale(0.97); }
     <div style="padding: 24px 16px 0;max-width:860px;margin:0 auto">
       <div class="tab-guide" id="tabGuide">
         <button class="active" onclick="switchMainView('search')">🔍 文件检索</button>
-        <button onclick="switchMainView('admin')">👥 审批管理</button>
+        <button onclick="switchMainView('admin')">👥 用户管理</button>
       </div>
     </div>
 
@@ -1435,15 +1457,15 @@ button:active { transform: scale(0.97); }
         </div>
         <div class="stats">
           <div class="stat-item">
-            <div class="num">1,247</div>
+            <div class="num" id="statFiles">--</div>
             <div class="label">归档文件</div>
           </div>
           <div class="stat-item">
-            <div class="num">8</div>
+            <div class="num" id="statDirs">--</div>
             <div class="label">目录分区</div>
           </div>
           <div class="stat-item">
-            <div class="num">36</div>
+            <div class="num" id="statUsers">--</div>
             <div class="label">注册用户</div>
           </div>
         </div>
@@ -1483,9 +1505,17 @@ button:active { transform: scale(0.97); }
 
     <!-- Admin view -->
     <div id="adminView" class="container" style="padding-top:0;display:none">
-      <div class="admin-panel">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="adminTabPending" class="btn-primary" style="flex:1" onclick="adminSwitchTab('pending')">📋 审批管理</button>
+        <button id="adminTabUsers" class="btn-secondary" style="flex:1" onclick="adminSwitchTab('users')">👥 用户管理</button>
+      </div>
+      <div id="adminPendingPanel" class="admin-panel">
         <h3>注册审批管理</h3>
         <div id="adminContent"></div>
+      </div>
+      <div id="adminUsersPanel" class="admin-panel" style="display:none">
+        <h3>已注册用户管理</h3>
+        <div id="adminUsersContent"></div>
       </div>
     </div>
 
@@ -1556,6 +1586,7 @@ function showPage(id) {
 function showMainApp() {
   showPage('mainApp');
   document.getElementById('userDisplay').textContent = currentUser.name;
+  document.getElementById('greetingText').textContent = '欢迎回来，' + currentUser.name;
   if (currentUser.role === 'admin') {
     document.getElementById('adminBadge').style.display = 'inline';
     document.getElementById('adminBtn').style.display = 'inline';
@@ -1564,8 +1595,8 @@ function showMainApp() {
     document.getElementById('adminBtn').style.display = 'none';
   }
   showSearchPage();
+  loadStats();
 }
-
 function showSearchPage() {
   document.getElementById('searchView').style.display = 'block';
   document.getElementById('adminView').style.display = 'none';
@@ -1579,7 +1610,23 @@ function showAdmin() {
   document.getElementById('adminView').style.display = 'block';
   document.querySelectorAll('#tabGuide button').forEach(function(b) { b.classList.remove('active'); });
   document.querySelector('#tabGuide button:nth-child(2)').classList.add('active');
-  loadAdminPending();
+  adminSwitchTab('pending');
+}
+
+function adminSwitchTab(tab) {
+  if (tab === 'pending') {
+    document.getElementById('adminPendingPanel').style.display = 'block';
+    document.getElementById('adminUsersPanel').style.display = 'none';
+    document.getElementById('adminTabPending').className = 'btn-primary';
+    document.getElementById('adminTabUsers').className = 'btn-secondary';
+    loadAdminPending();
+  } else {
+    document.getElementById('adminPendingPanel').style.display = 'none';
+    document.getElementById('adminUsersPanel').style.display = 'block';
+    document.getElementById('adminTabPending').className = 'btn-secondary';
+    document.getElementById('adminTabUsers').className = 'btn-primary';
+    loadUsers();
+  }
 }
 
 function switchMainView(view) {
@@ -1667,6 +1714,103 @@ function doLogout() {
     showPage('loginPage');
     document.getElementById('loginError').textContent = '';
   });
+}
+
+function loadStats() {
+  if (MOCK_MODE) {
+    document.getElementById('statFiles').textContent = '1,247';
+    document.getElementById('statDirs').textContent = '8';
+    document.getElementById('statUsers').textContent = '36';
+    return;
+  }
+  fetch(API + '/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    document.getElementById('statFiles').textContent = d.file_count.toLocaleString();
+    document.getElementById('statDirs').textContent = d.dir_count;
+    document.getElementById('statUsers').textContent = d.user_count;
+  })
+  .catch(function() {});
+}
+
+function loadUsers() {
+  var el = document.getElementById('adminUsersContent');
+  if (MOCK_MODE) {
+    el.innerHTML = '<table class="admin-table"><tr><th>账号</th><th>姓名</th><th>部门</th><th>角色</th><th>状态</th><th>注册时间</th></tr><tr><td>bowin6699</td><td>孙宇晨</td><td>管理部</td><td><span class="user-badge user-badge-admin">管理员</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>bowin6699-1</td><td>侯博文</td><td>投融资部</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-15</td></tr><tr><td>lamb</td><td>杨</td><td>融资</td><td><span class="user-badge user-badge-user">用户</span></td><td><span style="color:#10b981;font-weight:600">已通过</span></td><td>2026-05-18</td></tr></table>';
+    return;
+  }
+  fetch(API + '/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.users || d.users.length === 0) { el.innerHTML = '<div class="admin-empty">暂无用户数据</div>'; return; }
+    var html = '<table class="admin-table"><tr><th>账号</th><th>姓名</th><th>部门</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr>';
+    d.users.forEach(function(u) {
+      var roleBadge = u.role === 'admin' ? '<span class="user-badge user-badge-admin">管理员</span>' : '<span class="user-badge user-badge-user">用户</span>';
+      var statusText = u.approved ? '<span style="color:#10b981;font-weight:600">已通过</span>' : '<span style="color:#f59e0b;font-weight:600">待审核</span>';
+      html += '<tr>' +
+        '<td>' + escHtml(u.username) + '</td>' +
+        '<td><span id="uname_' + escJs(u.username) + '">' + escHtml(u.name) + '</span></td>' +
+        '<td><span id="udept_' + escJs(u.username) + '">' + escHtml(u.department) + '</span></td>' +
+        '<td>' + roleBadge + '</td>' +
+        '<td>' + statusText + '</td>' +
+        '<td style="font-size:0.8rem">' + escHtml(u.created_at.substring(0,10)) + '</td>' +
+        '<td><button class="admin-approve" onclick="editUser(\'' + escJs(u.username) + '\')">编辑</button></td>' +
+        '</tr>';
+    });
+    html += '</table>';
+    el.innerHTML = html;
+  });
+}
+
+var editingUser = null;
+
+function editUser(username) {
+  if (editingUser) return;
+  editingUser = username;
+  var nameEl = document.getElementById('uname_' + username);
+  var deptEl = document.getElementById('udept_' + username);
+  var name = nameEl ? nameEl.textContent : '';
+  var dept = deptEl ? deptEl.textContent : '';
+  if (nameEl) nameEl.innerHTML = '<input class="edit-user-input" id="editNameInput" value="' + escHtml(name) + '">';
+  if (deptEl) deptEl.innerHTML = '<input class="edit-user-input" id="editDeptInput" value="' + escHtml(dept) + '">';
+  var btn = document.querySelector('#adminUsersContent .admin-table tr:last-child td:last-child .admin-approve');
+  if (btn) {
+    btn.textContent = '保存';
+    btn.onclick = function() { saveUser(username); };
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'edit-user-cancel';
+    cancelBtn.textContent = '取消';
+    cancelBtn.onclick = function() { cancelEdit(); };
+    btn.parentNode.appendChild(cancelBtn);
+  }
+}
+
+function saveUser(username) {
+  var name = document.getElementById('editNameInput').value.trim();
+  var dept = document.getElementById('editDeptInput').value.trim();
+  if (MOCK_MODE) {
+    cancelEdit();
+    loadUsers();
+    return;
+  }
+  fetch(API + '/api/admin/users/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ username: username, name: name, department: dept })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.detail) { alert('更新失败: ' + d.detail); return; }
+    editingUser = null;
+    loadUsers();
+    loadStats();
+  })
+  .catch(function() { alert('网络错误'); });
+}
+
+function cancelEdit() {
+  editingUser = null;
+  loadUsers();
 }
 
 function loadAdminPending() {
@@ -1829,6 +1973,65 @@ document.getElementById('regDept').addEventListener('keydown', function(e) { if 
 </body>
 </html>"""
 
+
+
+# ══════════════════════════════════════════════════════════
+#  API: Admin – Real stats & user management
+# ══════════════════════════════════════════════════════════
+
+@app.get("/api/admin/stats")
+async def admin_stats(request: Request):
+    require_admin(request)
+    import subprocess
+    users_data = load_users()
+    user_count = len(users_data)
+    dir_preset_count = 8  # E2, E3, E4, H区, J3区, YLd, YLe, YLf
+    file_count = 0
+    try:
+        result = subprocess.run(
+            ["find", "/data/汉口北工作/证照/", "-type", "f"],
+            capture_output=True, text=True, timeout=30
+        )
+        lines = result.stdout.strip()
+        file_count = len(lines.split("\n")) if lines else 0
+    except Exception:
+        file_count = 0
+    return {"file_count": file_count, "dir_count": dir_preset_count, "user_count": user_count}
+
+
+@app.get("/api/admin/users")
+async def admin_users(request: Request):
+    require_admin(request)
+    users_data = load_users()
+    result = []
+    for uname, u in users_data.items():
+        result.append({
+            "username": uname,
+            "name": u.get("name", ""),
+            "department": u.get("department", ""),
+            "role": u.get("role", ""),
+            "approved": u.get("approved", False),
+            "created_at": u.get("created_at", ""),
+        })
+    return {"users": result}
+
+
+@app.post("/api/admin/users/update")
+async def admin_users_update(request: Request):
+    require_admin(request)
+    body = await request.json()
+    username = body.get("username", "").strip()
+    users_data = load_users()
+    if username not in users_data:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if "name" in body and body["name"].strip():
+        users_data[username]["name"] = body["name"].strip()
+    if "department" in body and body["department"].strip():
+        users_data[username]["department"] = body["department"].strip()
+    if "role" in body and body["role"].strip():
+        users_data[username]["role"] = body["role"].strip()
+    save_users(users_data)
+    return {"message": "更新成功"}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
